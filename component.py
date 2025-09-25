@@ -25,9 +25,9 @@ class Connection(GameObject):
 
     def destroy(self):
         if self.source:
-            self.source.link = None
+            self.source.links.remove(self)
         if self.target:
-            self.target.links.remove(self)
+            self.target.link = None
 
         self.dequeue()
 
@@ -39,9 +39,8 @@ class Connection(GameObject):
                 self.destroy()
         else:
             self.target.value = self.source.value
-            print(self.source.value)
             if self.source.value:
-                self.color = (self.color[0], 128, self.color[2])
+                self.color = (self.color[0], 255, self.color[2])
             else:
                 self.color = (self.color[0], 0, self.color[2])
 
@@ -74,7 +73,7 @@ class Input(Circle):
     def __init__(self, i):
         self.value = False
         self.index = i
-        super().__init__(pos=(0,0), radius=5, color=(0,0,255))
+        super().__init__(pos=(0,0), radius=5, color=[0,0,255])
 
     def destroy(self):
         if self.link:
@@ -99,7 +98,7 @@ class Input(Circle):
             if self.link:
                 self.link.destroy()
             self.link = l
-        elif self.parent.parent.finding_connection:
+        elif self.parent.parent.finding_connection and not self.parent.parent.finding_connection == self.link:
             if self.link:
                 self.link.destroy()
             self.link = self.parent.parent.finding_connection
@@ -126,7 +125,7 @@ class Output(Input):
             l = self.parent.parent.reg_obj(Connection(self, True))
 
             self.links.append(l)
-        elif self.parent.parent.finding_connection:
+        elif self.parent.parent.finding_connection and not self.parent.parent.finding_connection == self.links[-1]:
             self.links.append(self.parent.parent.finding_connection)
             self.parent.parent.finding_connection.register_second(self, True)
 
@@ -173,6 +172,18 @@ class Component(GameObject):
         for i in self.outputs:
             i.change_color()
 
+    def on_update(self, ctx):
+        inputs = []
+        for i in self.inputs:
+            inputs.append(i.value)
+        ret = self.spec.prog(*inputs)
+        if type(ret) == bool:
+            ret = [ret]
+        if len(ret) != self.spec.outputs:
+            raise Exception("Mismatch between output numer and actual returned number of outputs on "+self.spec.display)
+        for i,val in enumerate(ret):
+            self.outputs[i].value = val
+
     def on_draw(self, ctx):
         if self.moving:
             if ctx.keyboard.x:
@@ -198,12 +209,20 @@ class LED(Component):
     class LEDSpec:
         inputs = 1
         outputs = 0
+        uid = "out"
         display = "<-"
     def __init__(self):
         super().__init__(self.LEDSpec)
 
+    def on_update(self, ctx):
+        if self.inputs[0].value:
+            self.circle.color[1] = 255
+        else:
+            self.circle.color[1] = 120
+
+
     def on_start(self):
-        self.reg_obj(Circle((0,0), 18, color=(120,120,120)), "circle")
+        self.reg_obj(Circle((0,0), 18, color=[120,120,120]), "circle")
         super().on_start()
         self.box.dequeue()
         self.box_bg.dequeue()
@@ -215,9 +234,13 @@ class Button(Component):
     class LEDSpec:
         inputs = 0
         outputs = 1
+        uid = "inp"
         display = "->"
     def __init__(self):
         super().__init__(self.LEDSpec)
+
+    def on_update(self, ctx):
+        pass
 
     def on_start(self):
         self.reg_obj(Box((0,0), (36,36), color=(120,120,120)), "box_new")
@@ -240,6 +263,59 @@ class Button(Component):
             else:
                 self.box_new.color = (120,120,120)
 
+class Label(Component):
+    class LEDSpec:
+        inputs = 0
+        outputs = 0
+        uid = "text"
+        display = "<-"
+    def __init__(self, text):
+        self.LEDSpec.display = text
+        super().__init__(self.LEDSpec)
+        #self.reg_obj(TextBox(text, pos=(0,0), font="DejaVuSansMono.ttf", fontsize=16), "text")
+
+    def on_update(self, ctx):
+        pass
+
+    def on_start(self):
+        super().on_start()
+        self.box_bg.dequeue()
+        self.box.size = Vector2(self.text.width, self.text.height) + (15, 15)
+        self.box.topleft = Vector2(self.box.size) / -2
+
+class Switch(Component):
+    class LEDSpec:
+        inputs = 2
+        outputs = 2
+        uid = "route"
+        display = "-"
+    def __init__(self):
+        super().__init__(self.LEDSpec)
+
+    def on_update(self, ctx):
+        self.outputs[0].value = self.inputs[0].value
+        self.outputs[1].value = self.inputs[1].value
+
+    def on_start(self):
+        self.reg_obj(Box((0,0), (36,36), color=(120,120,120)), "box_new")
+        super().on_start()
+        self.box.dequeue()
+        self.box_bg.dequeue()
+
+
+        self.box_new.topleft = (-18, -18)
+        self.box_new.on_click = self.on_click
+        self.outputs[0].pos.x = self.box_new.size[0]/2+1
+        self.outputs[0].pos.y = 0
+
+        self.outputs[1].pos.x = 0
+        self.outputs[1].pos.y = self.box_new.size[0]/2+1
+
+        self.inputs[0].pos.x = self.box_new.size[0]/-2+1
+        self.inputs[0].pos.y = 0
+
+        self.inputs[1].pos.x = 0
+        self.inputs[1].pos.y = self.box_new.size[0]/-2+1
 
 
 class ComponentContainer(GameObject):
@@ -272,13 +348,19 @@ class ComponentContainer(GameObject):
             self.new_comps.append(Component(self.loaded[2]))
         if key == "r":
             self.new_comps.append(Component(self.loaded[3]))
+
         if key == "a":
             self.new_comps.append(Button())
         if key == "s":
             self.new_comps.append(LED())
+        if key == "d":
+            self.new_comps.append(Switch())
+        if key == "f":
+            name = input("Label Name:")
+            self.new_comps.append(Label(name))
 
     def on_draw(self, ctx):
         while self.new_comps:
             new = self.new_comps.pop(0)
-            new.pos = ctx.mouse_pos
+            new.pos = ctx.mouse_pos - self.pos
             self.reg_obj(new)

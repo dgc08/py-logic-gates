@@ -2,6 +2,7 @@
 
 class And:
     names = ["and", "&"]
+    uid="and"
     display = "&"
     inputs = 2
     outputs = 1
@@ -11,6 +12,7 @@ class And:
 
 class Or:
     names = ["or", "||"]
+    uid="or"
     display = "||"
     inputs = 2
     outputs = 1
@@ -21,6 +23,7 @@ class Or:
 
 class Xor:
     names = ["xor", "^"]
+    uid="xor"
     display = "^"
     inputs = 2
     outputs = 1
@@ -31,6 +34,7 @@ class Xor:
 
 class Not:
     names = ["not", "~", "!"]
+    uid="not"
     display = "¬"
     inputs = 1
     outputs = 1

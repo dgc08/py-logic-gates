@@ -9,12 +9,12 @@ game.init_screen(600, 800, "py logic gates", pygame.RESIZABLE)
 class GuiElements(GameObject):
     def on_start(self):
         self.static = True
-        self.reg_obj(TextBox("q: XOR  w: AND  e: OR   r: NOT\na: inp  s: out\nx: delete", pos=(200,50)))
+        self.reg_obj(TextBox("q: XOR  w: AND  e: OR   r: NOT\na: inp  s: out  d: swt\nx: delete", pos=(200,50), font="DejaVuSansMono.ttf", fontsize=20))
 
 class MainScreen(GameObject):
     def on_start(self):
         #self.bg_color = (136, 136, 136)
-        self.reg_obj(Sprite("bg.png", tile=True))
+        self.reg_obj(Sprite("bg.png", tile=True), "bg")
         self.reg_obj(GuiElements())
 
         self.reg_obj(ComponentContainer(), "c")
